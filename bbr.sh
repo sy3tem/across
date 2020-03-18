@@ -210,14 +210,6 @@ check_bbr_status() {
     fi
 }
 
-check_kernel_version() {
-    local kernel_version=$(uname -r | cut -d- -f1)
-    if version_ge ${kernel_version} 4.9; then
-        return 0
-    else
-        return 1
-    fi
-}
 
 install_elrepo() {
 
@@ -287,14 +279,6 @@ install_bbr() {
         echo -e "${green}Info:${plain} TCP BBR has already been installed. nothing to do..."
         exit 0
     fi
-    check_kernel_version
-    if [ $? -eq 0 ]; then
-        echo
-        echo -e "${green}Info:${plain} Your kernel version is greater than 4.9, directly setting TCP BBR..."
-        sysctl_config
-        echo -e "${green}Info:${plain} Setting TCP BBR completed..."
-        exit 0
-    fi
 
     if [[ x"${release}" == x"centos" ]]; then
         install_elrepo
@@ -336,6 +320,15 @@ install_bbr() {
             rm -f ${rpm_kernel_name} ${rpm_kernel_devel_name}
         elif centosversion 7; then
             yum -y install kernel-ml kernel-ml-devel
+            if [ $? -ne 0 ]; then
+                echo -e "${red}Error:${plain} Install latest kernel failed, please check it."
+                exit 1
+            fi
+			elif centosversion 8; then
+			rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+			rpm -Uvh https://www.elrepo.org/elrepo-release-8.0-2.el8.elrepo.noarch.rpm
+			yum --disablerepo="*" --enablerepo="elrepo-kernel" list available
+            yum -y --enablerepo=elrepo-kernel install kernel-ml kernel-ml-devel
             if [ $? -ne 0 ]; then
                 echo -e "${red}Error:${plain} Install latest kernel failed, please check it."
                 exit 1
